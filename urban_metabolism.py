@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+"""
+Urban Metabolism ABM: Multi-Agent Simulation Marketplace & Lifecycle Assessment Engine
+
+Engineered to simulate urban metabolism, material circularity, and lifecycle 
+environmental impacts within the built environment.
+"""
+
 import os
 import numpy as np
 import pandas as pd
@@ -17,15 +25,21 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - [URBAN-METABOLISM]
 os.makedirs("publication_figures", exist_ok=True)
 os.makedirs("/kaggle/working", exist_ok=True)
 
-plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')
+# Defensive style loading for server-side compliance
+if 'seaborn-v0_8-whitegrid' in plt.style.available:
+    plt.style.use('seaborn-v0_8-whitegrid')
+elif 'seaborn-whitegrid' in plt.style.available:
+    plt.style.use('seaborn-whitegrid')
+else:
+    plt.style.use('default')
 
-# Academic styling: Target Times font family with Linux/Kaggle fallbacks and compact text sizes
+# Academic styling: Target Times font family with cross-platform fallbacks
 plt.rcParams.update({
     'font.family': 'serif',
     'font.serif': ['Times New Roman', 'Times', 'Liberation Serif', 'DejaVu Serif', 'Nimbus Roman'],
-    'font.size': 9,             # Smaller, crisp baseline font size
-    'axes.labelsize': 10,        # Explicitly sized for clean axis definitions
-    'xtick.labelsize': 8.5,      # Compact ticks to prevent overlapping
+    'font.size': 9,              
+    'axes.labelsize': 10,        
+    'xtick.labelsize': 8.5,      
     'ytick.labelsize': 8.5,
     'legend.fontsize': 8.5,
     'figure.dpi': 300,
@@ -49,7 +63,8 @@ class ZenloliMasterPipeline:
             return
         for root, _, filenames in os.walk(self.base_dir):
             for filename in filenames:
-                if not filename.endswith(".xlsx") or filename.startswith("~$"): continue
+                if not filename.endswith(".xlsx") or filename.startswith("~$"): 
+                    continue
                 full_path = os.path.join(root, filename)
                 name_norm = filename.lower()
                 
@@ -61,12 +76,14 @@ class ZenloliMasterPipeline:
                     self.files["dataset_2"] = full_path
 
     def _get_sheet_name(self, xls_path: str, keywords: list) -> str:
-        if not xls_path or not os.path.exists(xls_path): return None
+        if not xls_path or not os.path.exists(xls_path): 
+            return None
         try:
             xls = pd.ExcelFile(xls_path)
             for sheet in xls.sheet_names:
                 norm_sheet = sheet.lower().replace(" ", "").replace("-", "").replace("_", "")
-                if any(kw in norm_sheet for kw in keywords): return sheet
+                if any(kw in norm_sheet for kw in keywords): 
+                    return sheet
             return xls.sheet_names[0]
         except Exception as e:
             logging.error(f"Error reading sheet names from {xls_path}: {e}")
@@ -74,9 +91,11 @@ class ZenloliMasterPipeline:
 
     def parse_production_a1_a3(self) -> Dict[str, Any]:
         path = self.files.get("dataset_1")
-        if not path: return {}
+        if not path: 
+            return {}
         sheet = self._get_sheet_name(path, ["production", "a1a3", "a1"])
-        if not sheet: return {}
+        if not sheet: 
+            return {}
         
         raw_df = pd.read_excel(path, sheet_name=sheet, header=None)
         
@@ -87,26 +106,32 @@ class ZenloliMasterPipeline:
         for idx in range(2, len(raw_df)):
             row = raw_df.iloc[idx]
             impact_cat = str(row.iloc[0]).strip().upper()
-            if not impact_cat or "NAN" in impact_cat or "IMPACT" in impact_cat: continue
+            if not impact_cat or "NAN" in impact_cat or "IMPACT" in impact_cat: 
+                continue
             
             for col_idx in range(1, len(row)):
                 reg = str(row0[col_idx]).strip().upper()
                 mat = str(row1[col_idx]).strip().upper()
-                if "UNKNOWN" in reg or reg == "": reg = "CANADA"
+                if "UNKNOWN" in reg or reg == "": 
+                    reg = "CANADA"
                 
                 val = pd.to_numeric(row.iloc[col_idx], errors='coerce')
                 val = 0.0 if pd.isna(val) else val
                 
-                if reg not in processed_data: processed_data[reg] = {}
-                if mat not in processed_data[reg]: processed_data[reg][mat] = {}
+                if reg not in processed_data: 
+                    processed_data[reg] = {}
+                if mat not in processed_data[reg]: 
+                    processed_data[reg][mat] = {}
                 processed_data[reg][mat][impact_cat] = val
         return processed_data
 
     def parse_material_flows(self) -> Dict[int, Dict[str, float]]:
         path = self.files.get("dataset_3")
-        if not path: return {}
+        if not path: 
+            return {}
         sheet = self._get_sheet_name(path, ["materialflowsbau", "flowsbau", "bauflow", "inflows"])
-        if not sheet: return {}
+        if not sheet: 
+            return {}
         
         raw_df = pd.read_excel(path, sheet_name=sheet, header=None)
         
@@ -137,11 +162,14 @@ class ZenloliMasterPipeline:
         for _, row in data_df.iterrows():
             try:
                 year = int(pd.to_numeric(row.iloc[year_col_idx], errors='coerce'))
-                if pd.isna(year): continue
-                if year not in time_series: time_series[year] = {}
+                if pd.isna(year): 
+                    continue
+                if year not in time_series: 
+                    time_series[year] = {}
                 
                 for col_idx in range(len(row)):
-                    if col_idx == year_col_idx: continue
+                    if col_idx == year_col_idx: 
+                        continue
                     mat_header_str = str(materials_row[col_idx]).upper()
                     
                     val = pd.to_numeric(row.iloc[col_idx], errors='coerce')
@@ -172,7 +200,8 @@ class EpicOptimizedPipeline:
         self._discover_workbooks()
 
     def _discover_workbooks(self):
-        if not os.path.exists(self.base_dir): return
+        if not os.path.exists(self.base_dir): 
+            return
         for root, _, filenames in os.walk(self.base_dir):
             for filename in filenames:
                 if filename.endswith(".xlsx") and not filename.startswith("~$"):
@@ -190,7 +219,8 @@ class EpicOptimizedPipeline:
                             if "intensity" in row_str or "coefficient" in row_str:
                                 data_row = raw_df.iloc[i+1]
                                 val = pd.to_numeric(data_row.iloc[3], errors='coerce')
-                                if pd.notna(val): return float(val)
+                                if pd.notna(val): 
+                                    return float(val)
             except Exception:
                 continue
         return 0.003166 
@@ -232,7 +262,8 @@ class UrbanMetabolismEngine:
             for parsed_mat_key, impact_dict in a1_data.items():
                 if any(kw in parsed_mat_key for kw in keywords):
                     gwp_val = next((v for k, v in impact_dict.items() if any(x in k.lower() for x in ["global warming", "gwp", "fossil", "co2"])), 0.0)
-                    if gwp_val > 0.0: break
+                    if gwp_val > 0.0: 
+                        break
             
             if gwp_val == 0.0:
                 gwp_val = fallback_gwp.get(generic_name, 0.2)
@@ -259,7 +290,8 @@ class UrbanMetabolismEngine:
         years_list = list(flow_data.keys())
         
         for idx, year in enumerate(years_list):
-            if idx >= self.time_horizon: break
+            if idx >= self.time_horizon: 
+                break
             materials_dict = flow_data[year]
             agents_per_year = max(1, self.num_projects // len(years_list))
             
@@ -304,7 +336,8 @@ class UrbanMetabolismEngine:
 
         for t in range(self.time_horizon):
             for a in self.agents:
-                if a["decon_year"] != t: continue
+                if a["decon_year"] != t: 
+                    continue
                 
                 for mat, mass in a["materials"].items():
                     if scenario == "BAU":
@@ -330,14 +363,16 @@ class UrbanMetabolismEngine:
                         })
 
             for a in self.agents:
-                if a["const_year"] != t: continue
+                if a["const_year"] != t: 
+                    continue
                 
                 for mat, mass_needed in a["materials"].items():
                     still_needed = mass_needed
                     valid_supplies = [s for s in marketplace_supply if s["mat"] == mat and s["qty"] > 0]
                     
                     for supply in valid_supplies:
-                        if still_needed <= 0: break
+                        if still_needed <= 0: 
+                            break
                         
                         distance = np.sqrt((a["x"] - supply["x"])**2 + (a["y"] - supply["y"])**2)
                         lag = t - supply["posted_year"]
@@ -410,9 +445,6 @@ def plot_publication_figures(b_res: dict, p_res: dict, f_res: dict):
     plt.plot(years, f_res["cumulative_carbon"], label="Scenario 3: Full Digital Circularity", color="#27ae60", lw=1.8)
     plt.fill_between(years, f_res["cumulative_carbon"] * 0.96, f_res["cumulative_carbon"] * 1.04, color="#27ae60", alpha=0.12, label="System Bound Variance (±4%)")
     
-    # In-chart title commented out for caption parsing
-    # plt.title("Fig 1. Cumulative District Embodied Carbon Trajectories")
-    
     plt.xlabel("Simulation Timeline Horizon (Years)")
     plt.ylabel("Cumulative Footprint Volume (ktCO$_2$e)")
     plt.legend(loc="upper left", frameon=True)
@@ -431,9 +463,6 @@ def plot_publication_figures(b_res: dict, p_res: dict, f_res: dict):
         offset_y = 1 if yval > 0 else -10
         plt.text(bar.get_x() + bar.get_width()/2, yval + offset_y, f"${yval:.2f}M", ha='center', va='bottom', fontweight='bold', fontsize=8)
         
-    # In-chart title commented out for caption parsing
-    # plt.title("Fig 2. Cumulative District Net Present Value (NPV @5%)")
-    
     plt.ylabel("System Net Financial Balance (Millions USD)")
     plt.axhline(0, color='black', linewidth=0.8)
     plt.savefig(f"{out_dir}/Fig2_DistrictNPV.png")
@@ -451,9 +480,6 @@ def plot_publication_figures(b_res: dict, p_res: dict, f_res: dict):
     for idx, v in enumerate(volumes):
         plt.text(v + (max_vol * 0.015 if max_vol > 0 else 0.1), idx, f"{v:.1f} kt", va='center', fontweight='bold', fontsize=8)
         
-    # In-chart title commented out for caption parsing
-    # plt.title("Fig 3. Material Flow Distribution (Full Digital Scenario)")
-    
     plt.xlabel("Material Mass Volume (Kilotonnes)")
     plt.xlim(0, max_vol * 1.2 if max_vol > 0 else 10.0)
     plt.savefig(f"{out_dir}/Fig3_MaterialFlows.png")
@@ -478,9 +504,6 @@ def plot_publication_figures(b_res: dict, p_res: dict, f_res: dict):
         
     surf = ax.plot_surface(T_mesh, D_mesh, P_match, cmap='viridis', edgecolor='none', alpha=0.85)
     
-    # In-chart title commented out for caption parsing
-    # ax.set_title("Fig 4. Empirical Match Probability Surface under Spatial Friction Boundaries", pad=20)
-    
     ax.set_xlabel("Coordination Lag (Months)", labelpad=5, fontsize=8.5)
     ax.set_ylabel("Hauling Radius (km)", labelpad=5, fontsize=8.5)
     ax.set_zlabel("Empirical Density Index (P)", labelpad=5, fontsize=8.5)
@@ -494,9 +517,6 @@ def plot_publication_figures(b_res: dict, p_res: dict, f_res: dict):
     # FIG 5: TRUE Zero Waste Compliance Donut Matrix Panels
     # --------------------------------------------------------------------------
     fig, axes = plt.subplots(1, 3, figsize=(11, 4))
-    
-    # In-chart title commented out for caption parsing
-    # fig.suptitle("Fig 5. TRUE Zero Waste Evaluation (90% Diversion Target structural validation)", y=1.05, fontsize=15)
     
     for idx, (res, title) in enumerate(zip([b_res, p_res, f_res], ["S1: BAU Baseline", "S2: Partial Sync", "S3: Full Digital"])):
         ax = axes[idx]
@@ -529,9 +549,6 @@ def plot_publication_figures(b_res: dict, p_res: dict, f_res: dict):
     plt.bar(x, [p_res["stage_breakdown"][s] for s in stages], width=w, label="S2: Partial Dynamics", color="#f39c12", edgecolor="black")
     plt.bar(x + w, [f_res["stage_breakdown"][s] for s in stages], width=w, label="S3: Full Digital", color="#27ae60", edgecolor="black")
     
-    # In-chart title commented out for caption parsing
-    # plt.title("Fig 6. Carbon Footprint Sensitivity Across Life Cycle Processing Stages")
-    
     plt.xticks(x, ["Production\n(A1-A3)", "Distribution\n(A4)", "EOL Logistics\n(C2)", "Processing\n(C3-C4)", "Circular\nOffsets (D)"], fontsize=7.5)
     plt.ylabel("Net Footprint Variance Impact (ktCO$_2$e)")
     plt.axhline(0, color='black', linewidth=0.8)
@@ -557,9 +574,6 @@ def plot_publication_figures(b_res: dict, p_res: dict, f_res: dict):
     ax2.set_ylabel('Avoided Operational Liabilities ($1000 USD)', color="#8e44ad")
     ax2.tick_params(axis='y', labelcolor="#8e44ad")
     
-    # In-chart title commented out for caption parsing
-    # plt.title("Fig 7. Recirculation Volumetric Elasticity vs. Data Sync Frequency Matrix")
-    
     plt.savefig(f"{out_dir}/Fig7_Elasticity.png")
     plt.close()
     
@@ -570,7 +584,10 @@ def plot_publication_figures(b_res: dict, p_res: dict, f_res: dict):
 # 5. EXECUTION BLOCK
 # ==============================================================================
 if __name__ == "__main__":
-    engine = UrbanMetabolismEngine(data_dir="/kaggle/input", num_projects=60)
+    # Dynamically locate active directory parameters
+    target_input = "/kaggle/input" if os.path.exists("/kaggle/input") else "./data"
+    
+    engine = UrbanMetabolismEngine(data_dir=target_input, num_projects=60)
     
     bau_data = engine.execute_scenario("BAU")
     partial_data = engine.execute_scenario("PARTIAL")
